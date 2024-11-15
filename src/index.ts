@@ -20,8 +20,11 @@ app.post('/lit', async (c) => {
   return c.json({verified: true})
 })
 
-app.post('/approval', (c) => {
-  return c.text('Hello Hono!')
+app.post('/connect', async (c) => {
+  const body = await c.req.json()
+  console.log(body)
+
+  return c.json({body})
 })
 
 app.get('/', (c) => {
