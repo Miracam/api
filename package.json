@@ -6,7 +6,9 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.10"
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.10",
+    "viem": "^2.21.45"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
