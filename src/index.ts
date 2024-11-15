@@ -13,6 +13,13 @@ app.use('*', cors({
   credentials: true,
 }))
 
+app.post('/lit', async (c) => {
+  const body = await c.req.json()
+  console.log(body)
+  // await fs.writeFile('/tmp/body.json', JSON.stringify(body, null, 2))
+  return c.json({verified: true})
+})
+
 app.post('/approval', (c) => {
   return c.text('Hello Hono!')
 })
