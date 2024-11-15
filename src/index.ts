@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { ADMIN, SignClient } from './util.js'
+import supabase, { ADMIN, SignClient } from './util.js'
 import fs from 'fs'
 const app = new Hono()
 
@@ -25,24 +25,55 @@ app.post('/lit', async (c) => {
   return c.json({verified: true})
 })
 
+
 app.post('/connect', async (c) => {
   const body = await c.req.json()
   console.log(body)
   fs.writeFileSync('/tmp/body.json', JSON.stringify(body, null, 2))
 
-  const res = await SignClient.createAttestation(body.sign_protocol_info.attestation, {
-    delegationSignature: body.sign_protocol_info.delegationSignature,
+
+  const attest_index = body.sign_protocol_info.attestation.indexingValue
+  const [_, owner, eoa] = attest_index.split(':')
+
+  const connectedAccount = await supabase.from('connected_accounts')
+    .select()
+    .eq('owner', owner.toLowerCase())
+    .eq('eoa', eoa.toLowerCase())
+    .maybeSingle()
+    .then((res: any) => {
+      if (res.error) {
+        console.error(res.error)
+        return c.json({error: res.error.message})
+      } else {
+        return res.data
+      }
+    })
+
+  if (connectedAccount) {
+    return c.json({connectedAccount})
+  }
+
+  // const res = await SignClient.createAttestation(body.sign_protocol_info.attestation, {
+  //   delegationSignature: body.sign_protocol_info.delegationSignature,
+  // })
+  // console.log(res)
+  const connectedAccounts = await supabase.from('connected_accounts').insert({
+    owner: owner.toLowerCase(),
+    eoa: eoa.toLowerCase(),
+    attest_index,
   })
-  console.log(res)
-  
-  //   const delegationCreateAttestationRes = await client.createAttestation(
-  //   info.attestation,
-  //   {
-  //     delegationSignature: info.delegationSignature,
-  //   }
-  // );
-  // console.log(delegationCreateAttestationRes);
-  return c.json({body})
+    .select()
+    .single()
+    .then((res: any) => {
+      if (res.error) {
+        console.error(res.error)
+        return c.json({error: res.error.message})
+      } else {
+        return res.data
+      }
+    })
+
+    return c.json({connectedAccounts})
 })
 
 app.get('/', (c) => {
