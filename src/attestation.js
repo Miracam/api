@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 
 // Constants
 // const APP_ID = '4RKXM42395.junyaoc.Toy-Cam';
-const APP_ID = '4RKXM42395.junyaoc.MIRAcam';
+const APP_ID = '4RKXM42395.junyaoc.Miracam';
 const DEV_MODE = true;
 
 // Helper functions

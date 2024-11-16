@@ -208,10 +208,11 @@ app.post('/connect', async (c) => {
     return c.json({connectedAccount})
   }
 
-  // const res = await SignClient.createAttestation(body.sign_protocol_info.attestation, {
-  //   delegationSignature: body.sign_protocol_info.delegationSignature,
-  // })
-  // console.log(res)
+  const res = await SignClient.createAttestation(body.sign_protocol_info.attestation, {
+    delegationSignature: body.sign_protocol_info.delegationSignature,
+  })
+  console.log(res)
+  
   const connectedAccounts = await supabase.from('connected_accounts').insert({
     owner: owner.toLowerCase(),
     eoa: eoa.toLowerCase(),
