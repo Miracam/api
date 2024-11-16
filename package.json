@@ -7,8 +7,11 @@
   "dependencies": {
     "@ethsign/sp-sdk": "^0.7.7",
     "@hono/node-server": "^1.13.7",
+    "@irys/upload": "^0.0.14",
+    "@irys/upload-ethereum": "^0.0.14",
     "@peculiar/x509": "^1.12.3",
     "@supabase/supabase-js": "^2.46.1",
+    "base": "link:@irys/upload/esm/base",
     "cbor": "^10.0.3",
     "dotenv": "^16.4.5",
     "hono": "^4.6.10",
