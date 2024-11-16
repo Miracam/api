@@ -24,6 +24,7 @@ app.use('*', cors({
 }))
 
 import { ethers } from "ethers";
+import { dymension } from 'viem/chains'
 const spendToken = async (_body: any) => {
 
   console.log('spendToken', _body);
@@ -286,6 +287,10 @@ app.post('/lit', async (c) => {
   const body = await c.req.json()
   console.log(body)
 
+  if (body.owner.toLowerCase() === body.eoa.toLowerCase()) {
+    return c.json({ verified: true })
+  }
+
   const url = `https://testnet-rpc.sign.global/api/index/attestations?indexingValue=connect:${body.owner}:${body.eoa}&schemaid=onchain_evm_84532_0x412&attester=${body.owner}`;
   console.log(url)
   try {
@@ -343,7 +348,7 @@ app.post('/connect', async (c) => {
     owner,
     eoa,
     attest_index,
-    ens: body?.username,
+    ens: body?.username?.toLowerCase(),
   })
     .select()
     .single()
