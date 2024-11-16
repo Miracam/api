@@ -1,11 +1,14 @@
 import "dotenv/config"
-import { ethers } from "ethers";
+import { ethers } from "ethersv5";
 import AttesterABI from "./attester.abi.json"
-// import {
-//   decodeResult,
-//   ResponseListener,
-//   FulfillmentCode,
-// } from "@chainlink/functions-toolkit"
+import {
+  decodeResult,
+  ResponseListener,
+  FulfillmentCode,
+  ReturnType
+} from "@chainlink/functions-toolkit"
+
+
 const network = {
   url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org", // https://docs.basescan.org/v/sepolia-basescan/
   gasPrice: undefined,
@@ -23,9 +26,16 @@ const network = {
   ],
 }
 
-const provider = new ethers.JsonRpcProvider(network.url);
+
+const provider = new ethers.providers.JsonRpcProvider(network.url);
 
 const wallet = new ethers.Wallet(process.env.ADMIN!, provider)
+
+const responseListener = new ResponseListener({
+  provider,
+  functionsRouterAddress: network.functionsRouter,
+})
+
 
 const AccessAttesterContract = new ethers.Contract(process.env.ATTESTER_CONTRACT_ADDRESS!, AttesterABI, wallet);
 
@@ -46,6 +56,50 @@ async function attest(url: string) {
   )
   const requestTxReceipt = await requestTx.wait(1)
   console.log("requestTxReceipt", requestTxReceipt)
+
+  try {
+    // Get response data
+    const { requestId, totalCostInJuels, responseBytesHexstring, errorString, fulfillmentCode } =
+      await responseListener.listenForResponseFromTransaction(requestTx.hash, undefined, undefined, undefined)
+
+    switch (fulfillmentCode) {
+      case FulfillmentCode.FULFILLED:
+        if (responseBytesHexstring !== "0x") {
+          console.log(
+            `Request ${requestId} fulfilled!\nResponse has been sent to consumer contract: ${decodeResult(
+              responseBytesHexstring,
+              ReturnType.bytes,
+            ).toString()}\n`
+          )
+        } else if (errorString.length > 0) {
+          console.warn(`Request ${requestId} fulfilled with error: ${errorString}\n`)
+        } else {
+          console.log(`Request ${requestId} fulfilled with empty response data.\n`)
+        }
+        const linkCost = ethers.utils.formatUnits(totalCostInJuels, 18)
+        console.log(`Total request cost: ${linkCost + " LINK"}`)
+        break
+
+      case FulfillmentCode.USER_CALLBACK_ERROR:
+        console.warn(
+          "Error encountered when calling consumer contract callback.\nEnsure the fulfillRequest function in FunctionsConsumer is correct and the --callbackgaslimit is sufficient."
+        )
+        break
+
+      case FulfillmentCode.COST_EXCEEDS_COMMITMENT:
+        console.warn(`Request ${requestId} failed due to a gas price spike when attempting to respond.`)
+        break
+
+      default:
+        console.warn(
+          `Request ${requestId} failed with fulfillment code: ${fulfillmentCode}. Please contact Chainlink support.`
+        )
+    }
+  } catch (error) {
+    console.warn("Request fulfillment was not received within 5 minute response period.")
+    throw error
+  } 
+
   return requestTxReceipt
 }
 
