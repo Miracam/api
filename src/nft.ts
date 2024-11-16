@@ -82,7 +82,7 @@ async function mintCamNFT(proof: Proof) {
 
   const tx = await minter.mint(extracted.r, extracted.s, extracted.pubkey, proof.owner, proof.url);
   await tx.wait(1)
-  console.log(tx)
+  // console.log(tx)
   return tx
   // return { hash: receipt.hash, tokenId: Number(tokenId) };
 }

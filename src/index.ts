@@ -38,6 +38,11 @@ app.post('/webhook/nft', async (c) => {
   let body = await c.req.json()
   fs.writeFileSync('/tmp/webhook-nft.json', JSON.stringify(body, null, 2))
 
+  await supabase.from('event_nft_transfers')
+    .upsert(body, { ignoreDuplicates: true })
+    .select()
+    .throwOnError()
+    .then(console.log)
   // {
   //   "type": "INSERT",
   //   "table": "event_nft_transfers",
@@ -56,8 +61,8 @@ app.post('/webhook/nft', async (c) => {
   // }
 
 
-  if (body.record.from_address === "0x0000000000000000000000000000000000000000") {
-    const url = await tokenUrl(body.record.token_id)
+  if (body.from_address === "0x0000000000000000000000000000000000000000") {
+    const url = await tokenUrl(body.token_id)
     console.log(url)
     const data = await fetch(url).then(res => res.json())
     fs.writeFileSync('/tmp/webhook-nft-data.json', JSON.stringify(data, null, 2))
@@ -66,7 +71,7 @@ app.post('/webhook/nft', async (c) => {
       const metadata = await supabase.from('nft_private')
       .upsert({
         encrypted: data.encrypted,
-        nft_id: body.record.token_id,
+        nft_id: body.token_id,
         proof: data.proof
       })
       .select()
@@ -84,7 +89,7 @@ app.post('/webhook/nft', async (c) => {
       .upsert({
         attributes: data.attributes,
         image: data.image,
-        nft_id: body.record.token_id,
+        nft_id: body.token_id,
         proof: data.proof
       })
       .select()
@@ -242,20 +247,19 @@ app.post('/access_nft', async (c) => {
 
 app.post('/lit', async (c) => {
   const body = await c.req.json()
-  console.log(body)
+  // console.log(body)
   // {
     //   eoa: '0x915B5A9a2485FDb2B68f06Cb21F09aF272ba7b08',
     //   owner: '0x12a2909c0F1fC6261DD7b940F6dB6f3b2C7aa83D'
     // }
-  // await fs.writeFile('/tmp/body.json', JSON.stringify(body, null, 2))
+  fs.writeFileSync('/tmp/lit.json', JSON.stringify(body, null, 2))
   return c.json({verified: true})
 })
 
 
 app.post('/connect', async (c) => {
   const body = await c.req.json()
-  console.log(body)
-  fs.writeFileSync('/tmp/body.json', JSON.stringify(body, null, 2))
+  fs.writeFileSync('/tmp/connect.json', JSON.stringify(body, null, 2))
 
 
   const attest_index = body.sign_protocol_info.attestation.indexingValue
@@ -282,7 +286,8 @@ app.post('/connect', async (c) => {
   const res = await SignClient.createAttestation(body.sign_protocol_info.attestation, {
     delegationSignature: body.sign_protocol_info.delegationSignature,
   })
-  console.log(res)
+
+  fs.writeFileSync('/tmp/lit-attestation.json', JSON.stringify(res, null, 2))
 
   const connectedAccounts = await supabase.from('connected_accounts').insert({
     owner: owner.toLowerCase(),
