@@ -3,6 +3,10 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import supabase, { ADMIN, SignClient } from './util.js'
+import * as crypto from 'crypto'
+import { verifyAttestation } from './attestation.js'
+
+
 import fs from 'fs'
 const app = new Hono()
 
@@ -13,6 +17,29 @@ app.use('*', cors({
   maxAge: 600,
   credentials: true,
 }))
+
+app.get('/access_nft', async (c) => {
+  // const body = await c.req.json()
+  const url = c.req.query('url')
+
+  const proof = await fetch(url!).then(res => res.json())
+  console.log("proof", proof)
+  const { ethereum_address, key_id, challenge_data, lit_ciphertext, lit_hash, attestation_receipt, secp256r1_pubkey } = proof
+
+  if (!attestation_receipt) {
+    return c.json({ error: 'Missing key_id or attestation in the request body' }, 400)
+  }
+  const challenge_data_hash = crypto.createHash('sha256').update(`ethereum_address=${ethereum_address}&lit_ciphertext=${lit_ciphertext}&lit_hash=${lit_hash}&secp256r1_pubkey=${secp256r1_pubkey}`).digest('base64')
+  // console.log("challenge_data_hash", challenge_data_hash)
+  if (challenge_data_hash !== challenge_data) {
+    return c.json({ error: 'Challenge data hash mismatch', details: challenge_data_hash, expected: challenge_data }, 400)
+  }
+
+  console.log("verifyAttestation", key_id, attestation_receipt, challenge_data)
+  const valid = await verifyAttestation(key_id, attestation_receipt, async () => challenge_data)
+
+  return c.json({ valid, owner: ethereum_address, attester: secp256r1_pubkey })
+})
 
 app.post('/lit', async (c) => {
   const body = await c.req.json()
