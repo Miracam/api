@@ -38,11 +38,7 @@ app.post('/webhook/nft', async (c) => {
   let body = await c.req.json()
   fs.writeFileSync('/tmp/webhook-nft.json', JSON.stringify(body, null, 2))
 
-  await supabase.from('event_nft_transfers')
-    .upsert(body, { ignoreDuplicates: true })
-    .select()
-    .throwOnError()
-    .then(console.log)
+
   // {
   //   "type": "INSERT",
   //   "table": "event_nft_transfers",
@@ -61,8 +57,8 @@ app.post('/webhook/nft', async (c) => {
   // }
 
 
-  if (body.from_address === "0x0000000000000000000000000000000000000000") {
-    const url = await tokenUrl(body.token_id)
+  if (body.record.from_address === "0x0000000000000000000000000000000000000000") {
+    const url = await tokenUrl(body.record.token_id)
     console.log(url)
     const data = await fetch(url).then(res => res.json())
     fs.writeFileSync('/tmp/webhook-nft-data.json', JSON.stringify(data, null, 2))
@@ -71,7 +67,7 @@ app.post('/webhook/nft', async (c) => {
       const metadata = await supabase.from('nft_private')
       .upsert({
         encrypted: data.encrypted,
-        nft_id: body.token_id,
+        nft_id: body.record.token_id,
         proof: data.proof
       })
       .select()
@@ -89,7 +85,7 @@ app.post('/webhook/nft', async (c) => {
       .upsert({
         attributes: data.attributes,
         image: data.image,
-        nft_id: body.token_id,
+        nft_id: body.record.token_id,
         proof: data.proof
       })
       .select()
