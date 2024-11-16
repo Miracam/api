@@ -7,6 +7,10 @@ const minter = new ethers.Contract(process.env.MINTER_CONTRACT_ADDRESS!, [
   "function mint(uint r, uint s, bytes pubkey, address to, string url) public"
 ], wallet);
 
+const nft = new ethers.Contract(process.env.NFT_CONTRACT_ADDRESS!, [
+  "function tokenURI(uint256 tokenId) public view returns (string memory)"
+], provider);
+
 async function extract(pubkey: string, signature: string) {
   const pubKeyBuf = Buffer.from(pubkey, 'base64')
   const signatureBuffer = Buffer.from(signature, 'base64')
@@ -83,5 +87,10 @@ async function mintCamNFT(proof: Proof) {
   // return { hash: receipt.hash, tokenId: Number(tokenId) };
 }
 
+async function tokenUrl(id: number) {
+  return await nft.tokenURI(id)
+  // return `https://gateway.irys.xyz/${id}`
+}
 
-export { mintCamNFT };
+
+export { mintCamNFT, tokenUrl };

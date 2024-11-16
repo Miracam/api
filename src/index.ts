@@ -11,7 +11,7 @@ import * as Attester from './attester.js'
 
 
 import fs from 'fs'
-import { mintCamNFT } from './nft.js'
+import { mintCamNFT, tokenUrl } from './nft.js'
 const app = new Hono()
 
 app.use('*', cors({
@@ -31,6 +31,77 @@ app.post('/publish', async (c) => {
   const tx = await mintCamNFT(body)
   return c.json({ tx: tx.hash, success: true })
 })
+
+
+app.post('/webhook/nft', async (c) => {
+  console.log('webhook/nft')
+  let body = await c.req.json()
+  fs.writeFileSync('/tmp/webhook-nft.json', JSON.stringify(body, null, 2))
+
+  // {
+  //   "type": "INSERT",
+  //   "table": "event_nft_transfers",
+  //   "record": {
+  //     "tx_hash": "0xc95c3a6719b5273ce08b9a7195edabd72ec5ee6b623927fe7bf5aaaf3398e347",
+  //     "token_id": 63,
+  //     "log_index": 5,
+  //     "block_time": "2024-11-14T15:29:52",
+  //     "created_at": "2024-11-14T16:24:52.20104",
+  //     "to_address": "0x80a301ba2fb59c9a0e90616110bb39726643e1ce",
+  //     "block_number": 17914952,
+  //     "from_address": "0x0000000000000000000000000000000000000000"
+  //   },
+  //   "schema": "public",
+  //   "old_record": null
+  // }
+
+
+  if (body.record.from_address === "0x0000000000000000000000000000000000000000") {
+    const url = await tokenUrl(body.record.token_id)
+    console.log(url)
+    const data = await fetch(url).then(res => res.json())
+    fs.writeFileSync('/tmp/webhook-nft-data.json', JSON.stringify(data, null, 2))
+
+    if (data.encrypted) {
+      const metadata = await supabase.from('nft_private')
+      .upsert({
+        encrypted: data.encrypted,
+        nft_id: body.record.token_id,
+        proof: data.proof
+      })
+      .select()
+      .then(o => {
+        if (o.error) {
+          c.json({error: o.error}, 422)
+        }
+        return o
+      })
+      return c.json({ created: metadata})
+
+    } else {
+
+      const metadata = await supabase.from('nft_metadata')
+      .upsert({
+        attributes: data.attributes,
+        image: data.image,
+        nft_id: body.record.token_id,
+        proof: data.proof
+      })
+      .select()
+      .then(o => {
+        if (o.error) {
+          c.json({error: o.error}, 422)
+        }
+        return o
+      })
+      return c.json({ created: metadata})
+    }
+
+  }
+
+  return c.json({ ok: true })
+})
+
 
 app.post('/upload', async (c) => {
   console.log('upload')
@@ -212,7 +283,7 @@ app.post('/connect', async (c) => {
     delegationSignature: body.sign_protocol_info.delegationSignature,
   })
   console.log(res)
-  
+
   const connectedAccounts = await supabase.from('connected_accounts').insert({
     owner: owner.toLowerCase(),
     eoa: eoa.toLowerCase(),
